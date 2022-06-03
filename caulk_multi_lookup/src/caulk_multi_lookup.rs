@@ -6,7 +6,7 @@ The protocol is described in Figure 3.
 use ark_bls12_381::{Bls12_381,Fr,FrParameters,G1Affine, G2Affine};
 use ark_poly::{univariate::DensePolynomial, Evaluations as EvaluationsOnDomain};
 use ark_ff::{Fp256, Field};
-
+use ark_std::{end_timer, start_timer};
 use ark_poly::{EvaluationDomain, Evaluations, GeneralEvaluationDomain, UVPolynomial, Polynomial};
 use ark_ec::{AffineCurve,ProjectiveCurve,PairingEngine};
 use ark_serialize::CanonicalSerialize;
@@ -456,6 +456,7 @@ pub fn verify_lookup_proof(
 )->bool
 {
 
+    let timer=     start_timer!(||"verify lookup");
 
     ///////////////////////////////////////////////////////////////////
     //1. check unity
@@ -572,7 +573,7 @@ pub fn verify_lookup_proof(
     let pairing2 = Bls12_381::pairing(proof.z_I_com,proof.H1_com);
 
     assert!(pairing1 == pairing2, "failure on pairing check");
-
+    end_timer!(timer);
     return true;
 }
 
@@ -641,46 +642,46 @@ pub fn test_lookup()
     _do_lookup();
 }
 
-#[allow(non_snake_case)]
-#[test]
-pub fn test_store()
-{
-    //1. Setup
-    let n: usize = 6;
-    let N: usize = 1<<n;
-    let powers_size: usize = N+2; //SRS SIZE
-    let temp_m = n; //dummy
-    let pp =setup_multi_lookup(&powers_size,&N,&temp_m,&n);
-    let actual_degree = N-1;
-    let path=format!("tmp/poly_openings.log");
+// #[allow(non_snake_case)]
+// #[test]
+// pub fn test_store()
+// {
+//     //1. Setup
+//     let n: usize = 6;
+//     let N: usize = 1<<n;
+//     let powers_size: usize = N+2; //SRS SIZE
+//     let temp_m = n; //dummy
+//     let pp =setup_multi_lookup(&powers_size,&N,&temp_m,&n);
+//     let actual_degree = N-1;
+//     let path=format!("tmp/poly_openings.log");
 
-    //2. Store
-    let rng = &mut ark_std::test_rng();
-    let c_poly = UniPoly381::rand(actual_degree, rng);
-    let (c_comx, _) = KzgBls12_381::commit(&pp.poly_ck, &c_poly, None, None).unwrap();
-    let openings = multiple_open_g2(&pp.g2_powers, &c_poly, pp.n);
-    let table = TableInput{
-        c_poly: c_poly,
-        c_com: c_comx.0,
-        openings: openings
-    };
-    table.store(&path);
+//     //2. Store
+//     let rng = &mut ark_std::test_rng();
+//     let c_poly = UniPoly381::rand(actual_degree, rng);
+//     let (c_comx, _) = KzgBls12_381::commit(&pp.poly_ck, &c_poly, None, None).unwrap();
+//     let openings = multiple_open_g2(&pp.g2_powers, &c_poly, pp.n);
+//     let table = TableInput{
+//         c_poly: c_poly,
+//         c_com: c_comx.0,
+//         openings: openings
+//     };
+//     table.store(&path);
 
-    //3. Load
-    let table_loaded = TableInput::load(&path);
+//     //3. Load
+//     let table_loaded = TableInput::load(&path);
 
-    //4. Test
-    assert_eq!(table,table_loaded);
-    std::fs::remove_file(&path).expect("File can not be deleted");
+//     //4. Test
+//     assert_eq!(table,table_loaded);
+//     std::fs::remove_file(&path).expect("File can not be deleted");
 
-}
+// }
 
-#[allow(non_snake_case)]
-#[test]
-pub fn test_multiple_lookups()
-{
-    do_multiple_lookups()
-}
+// #[allow(non_snake_case)]
+// #[test]
+// pub fn test_multiple_lookups()
+// {
+//     do_multiple_lookups()
+// }
 
 pub fn get_poly_and_g2_openings(
     pp: &PublicParameters,
@@ -718,98 +719,98 @@ pub fn get_poly_and_g2_openings(
 
 }
 
-#[cfg(test)]
-pub mod tests {
-#[allow(non_snake_case)]
-pub fn do_multiple_lookups()
-{
-    const MIN_LOG_N: usize  = 7;
-    const MAX_LOG_N: usize = 15;
-    const EPS: usize=1;
-    const MIN_LOG_M: usize=2;
-    const MAX_LOG_M: usize=5;
+// #[cfg(test)]
+// pub mod tests {
+// #[allow(non_snake_case)]
+// pub fn do_multiple_lookups()
+// {
+//     const MIN_LOG_N: usize  = 7;
+//     const MAX_LOG_N: usize = 15;
+//     const EPS: usize=1;
+//     const MIN_LOG_M: usize=2;
+//     const MAX_LOG_M: usize=5;
 
-    for n in MIN_LOG_N..=MAX_LOG_N
-    {
+//     for n in MIN_LOG_N..=MAX_LOG_N
+//     {
 
-        //1. Setup
-        let N: usize = 1<<n;
-        let powers_size: usize = N+2; //SRS SIZE
-        println!("N={}",N);
-        let temp_m = n; //dummy
-        let mut pp =setup_multi_lookup(&powers_size,&N,&temp_m,&n);
-        let actual_degree = N-EPS;
-        //println!("time for powers of tau {:?} for N={:?}", now.elapsed(),N);
+//         //1. Setup
+//         let N: usize = 1<<n;
+//         let powers_size: usize = N+2; //SRS SIZE
+//         println!("N={}",N);
+//         let temp_m = n; //dummy
+//         let mut pp =setup_multi_lookup(&powers_size,&N,&temp_m,&n);
+//         let actual_degree = N-EPS;
+//         //println!("time for powers of tau {:?} for N={:?}", now.elapsed(),N);
 
-        //2. Poly and openings
-        let table=get_poly_and_g2_openings(&pp,actual_degree);
+//         //2. Poly and openings
+//         let table=get_poly_and_g2_openings(&pp,actual_degree);
 
-        for logm in MIN_LOG_M..=std::cmp::min(MAX_LOG_M,n/2-1)
-        {
-            //3. Setup
-            let now = Instant::now();
-            let mut m = 1<<logm;
-            m = m + 1;
+//         for logm in MIN_LOG_M..=std::cmp::min(MAX_LOG_M,n/2-1)
+//         {
+//             //3. Setup
+//             let now = Instant::now();
+//             let mut m = 1<<logm;
+//             m = m + 1;
 
-            println!("m={}",m);
-            pp.regenerate_lookup_params(m);
-            println!("Time to generate aux domain {:?}", now.elapsed());
+//             println!("m={}",m);
+//             pp.regenerate_lookup_params(m);
+//             println!("Time to generate aux domain {:?}", now.elapsed());
 
-            //4. Positions
-            let mut positions: Vec<usize> = vec![];
-            for j in 0..m { //generate positions evenly distributed in the set
-                let i_j: usize = j*(actual_degree/m);
-                positions.push(i_j);
-            };
+//             //4. Positions
+//             let mut positions: Vec<usize> = vec![];
+//             for j in 0..m { //generate positions evenly distributed in the set
+//                 let i_j: usize = j*(actual_degree/m);
+//                 positions.push(i_j);
+//             };
 
-             //5. generating phi
-            let blinder: Fp256<FrParameters> = random_field::<Fr>();
-            let a_m = DensePolynomial::from_coefficients_slice(&[blinder]);
-            let mut phi_poly = a_m.mul_by_vanishing_poly(pp.domain_m);
-            let c_poly_local = table.c_poly.clone();
-            for j in 0..m
-            {
-                phi_poly = &phi_poly +
-                &(&pp.lagrange_polynomials_m[j]
-                    * c_poly_local.evaluate(&pp.domain_N.element(positions[j])));  //adding c(w^{i_j})*mu_j(X)
-            }
+//              //5. generating phi
+//             let blinder: Fp256<FrParameters> = random_field::<Fr>();
+//             let a_m = DensePolynomial::from_coefficients_slice(&[blinder]);
+//             let mut phi_poly = a_m.mul_by_vanishing_poly(pp.domain_m);
+//             let c_poly_local = table.c_poly.clone();
+//             for j in 0..m
+//             {
+//                 phi_poly = &phi_poly +
+//                 &(&pp.lagrange_polynomials_m[j]
+//                     * c_poly_local.evaluate(&pp.domain_N.element(positions[j])));  //adding c(w^{i_j})*mu_j(X)
+//             }
 
-            for j in m..pp.domain_m.size()
-            {
-                phi_poly = &phi_poly +
-                &(&pp.lagrange_polynomials_m[j]
-                    * c_poly_local.evaluate( &pp.domain_N.element(0) ) );  //adding c(w^{i_j})*mu_j(X)
-            }
+//             for j in m..pp.domain_m.size()
+//             {
+//                 phi_poly = &phi_poly +
+//                 &(&pp.lagrange_polynomials_m[j]
+//                     * c_poly_local.evaluate( &pp.domain_N.element(0) ) );  //adding c(w^{i_j})*mu_j(X)
+//             }
 
-            //6. Running proofs
-            let now = Instant::now();
-            let (c_com, _) = KzgBls12_381::commit(&pp.poly_ck, &table.c_poly, None, None).unwrap();
-            let (phi_com, _) = KzgBls12_381::commit(&pp.poly_ck, &phi_poly, None, None).unwrap();
-            println!("Time to generate inputs = {:?}", now.elapsed());
+//             //6. Running proofs
+//             let now = Instant::now();
+//             let (c_com, _) = KzgBls12_381::commit(&pp.poly_ck, &table.c_poly, None, None).unwrap();
+//             let (phi_com, _) = KzgBls12_381::commit(&pp.poly_ck, &phi_poly, None, None).unwrap();
+//             println!("Time to generate inputs = {:?}", now.elapsed());
 
-            let lookup_instance = LookupInstance{
-                c_com: c_com.0.clone(),
-                phi_com: phi_com.0.clone(),
-            };
+//             let lookup_instance = LookupInstance{
+//                 c_com: c_com.0.clone(),
+//                 phi_com: phi_com.0.clone(),
+//             };
 
-            let prover_input = LookupProverInput{
-                c_poly: table.c_poly.clone(),
-                phi_poly:phi_poly,
-                positions: positions,
-                openings: table.openings.clone()};
+//             let prover_input = LookupProverInput{
+//                 c_poly: table.c_poly.clone(),
+//                 phi_poly:phi_poly,
+//                 positions: positions,
+//                 openings: table.openings.clone()};
 
-            let now = Instant::now();
-            let (proof, unity_proof) = compute_lookup_proof(&lookup_instance, &prover_input,&pp);
-            println!("Time to generate proof for = {:?}", now.elapsed());
-            let now = Instant::now();
-            let res=verify_lookup_proof(table.c_com, phi_com.0, &proof, &unity_proof, &pp);
-            println!("Time to verify proof for  = {:?}",   now.elapsed());
-            assert!(res);
-            println!("Lookup test succeeded");
-        }
-    }
+//             let now = Instant::now();
+//             let (proof, unity_proof) = compute_lookup_proof(&lookup_instance, &prover_input,&pp);
+//             println!("Time to generate proof for = {:?}", now.elapsed());
+//             let now = Instant::now();
+//             let res=verify_lookup_proof(table.c_com, phi_com.0, &proof, &unity_proof, &pp);
+//             println!("Time to verify proof for  = {:?}",   now.elapsed());
+//             assert!(res);
+//             println!("Lookup test succeeded");
+//         }
+//     }
 
-}
+// }
 
 
 pub fn _do_lookup()
@@ -835,4 +836,4 @@ pub fn _do_lookup()
     assert!(res);
     println!("Lookup test succeeded");
 }
-}
+

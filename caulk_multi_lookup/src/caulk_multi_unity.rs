@@ -9,7 +9,7 @@ use ark_poly::{EvaluationDomain, UVPolynomial, Evaluations as EvaluationsOnDomai
     univariate::DensePolynomial, Polynomial};
 use ark_std::{Zero, One};
 use ark_ec::{msm::{VariableBaseMSM}, ProjectiveCurve, AffineCurve};
-
+use ark_std::{end_timer, start_timer};
 
 
 use crate::caulk_multi_setup::{PublicParameters};
@@ -305,7 +305,7 @@ pub fn prove_multiunity(
 pub fn verify_multiunity(pp: &PublicParameters, hash_input: &mut Fr,
     g1_u: G1Affine, pi_unity: &ProofMultiUnity
 ) -> bool {
-
+let timer=     start_timer!(||"verify multi unity");
 
     ////////////////////////////
     // alpha = Hash(g1_u, g1_u_bar, g1_h_2)
@@ -364,7 +364,7 @@ pub fn verify_multiunity(pp: &PublicParameters, hash_input: &mut Fr,
         pi_unity.pi_4 );
     let check5 = kzg_verify_g1_native( &pp, g1_P.into_affine(), Some( &(pp.domain_n.size() - 1) ), [beta].to_vec(), [Fr::zero()].to_vec(), pi_unity.pi_5 );
 
-
+        end_timer!(timer);
     return check1 && check2 && check3 && check4 && check5
 
 }
@@ -378,10 +378,11 @@ pub mod tests {
     use crate::caulk_multi_unity::{prove_multiunity,verify_multiunity};
     use crate::tools::{UniPoly381,convert_to_bigints};
     use rand::Rng;
+    use ark_std::UniformRand;
 
     use ark_poly::{EvaluationDomain,Evaluations as EvaluationsOnDomain,UVPolynomial};
-    use ark_ff::Fp256;
-    use ark_bls12_381::{  FrParameters};
+    use ark_ff::Fp256;use crate::verify_lookup_proof;
+    use ark_bls12_381::{ Fr, FrParameters};
     use ark_ec::{msm::{VariableBaseMSM}, ProjectiveCurve};
 
     //#[test]
@@ -432,12 +433,15 @@ pub mod tests {
         ////////////////////////////////////////////////////////////////////////////////////
         // run the prover
         ////////////////////////////////////////////////////////////////////////////////////
-        let pi_unity = prove_multiunity( &pp, &g1_u, vec_u_evals.clone(), u_poly_quotient );
+        let mut rng = ark_std::test_rng();
+        let mut hash_input = Fr::rand(&mut rng);
+        let mut hash_input2 = hash_input.clone();
+        let pi_unity = prove_multiunity( &pp, &mut hash_input, &g1_u, vec_u_evals.clone(), u_poly_quotient );
 
         ////////////////////////////////////////////////////////////////////////////////////
         // run the verifier
         ////////////////////////////////////////////////////////////////////////////////////
-        println!( "unity proof verifies {:?}", verify_multiunity( &pp, g1_u, pi_unity ) );
+        println!( "unity proof verifies {:?}", verify_multiunity( &pp,&mut hash_input2, g1_u, &pi_unity ) );
 
     }
 

@@ -29,3 +29,4 @@ blake2s_simd = "0.5.10"
 
 [features]
 asm = [ "ark-ff/asm" ]
+print-trace = [ "ark-std/print-trace" ]
